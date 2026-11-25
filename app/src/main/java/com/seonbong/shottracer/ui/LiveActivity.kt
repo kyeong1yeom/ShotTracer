@@ -131,10 +131,10 @@ class LiveActivity : ComponentActivity() {
         pendingTap?.let { (vx, vy) ->
             pendingTap = null
             val p = overlay.toFrame(vx, vy) ?: return@let
-            val s = ShotSession(p.first, p.second, f.width)
+            val s = ShotSession(f, p.first, p.second)   // 탭 위치를 실제 공 중심으로 보정
             session = s
             runOnUiThread {
-                overlay.ball = p; overlay.ballRadius = s.ballR
+                overlay.ball = Pair(s.ball.x, s.ball.y); overlay.ballRadius = s.ballR
                 overlay.tracked = emptyList(); overlay.curve = emptyList()
                 overlay.message = "준비 완료 $fpsInfo — 스윙하세요"; overlay.invalidate()
             }

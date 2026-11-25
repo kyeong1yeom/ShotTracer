@@ -50,6 +50,8 @@ class GalleryActivity : ComponentActivity() {
     /** 프레임별 실제 표시 시각(초). 휴대폰 영상은 가변 프레임레이트(VFR)인 경우가 많아 인덱스로 계산하지 않는다 */
     private var frameTimes = DoubleArray(0)
     private var ball: Pair<Double, Double>? = null
+    /** 화면에 보이는 프레임(공 탭 위치 보정용) */
+    @Volatile private var shownGray: com.seonbong.shottracer.engine.GrayFrame? = null
     private var curve: List<TrackPoint> = emptyList()
 
     private val picker = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { u ->
@@ -87,8 +89,10 @@ class GalleryActivity : ComponentActivity() {
             if (e.action == MotionEvent.ACTION_UP && image.visibility == View.VISIBLE) {
                 overlay.toFrame(e.x, e.y)?.let { p ->
                     ball = p
-                    overlay.ball = p
-                    overlay.ballRadius = maxOf(2.0, overlay.frameWidth * 0.01)
+                    // 탭 위치를 실제 공 중심으로 보정해서 보여 준다
+                    val info = shownGray?.let { com.seonbong.shottracer.engine.refineBall(it, p.first, p.second) }
+                    overlay.ball = if (info != null) Pair(info.x, info.y) else p
+                    overlay.ballRadius = info?.r ?: maxOf(2.0, overlay.frameWidth * 0.01)
                     overlay.message = "공 위치 설정됨 → [궤적 분석]"
                     analyzeBtn.isEnabled = true
                     overlay.invalidate()
@@ -151,6 +155,7 @@ class GalleryActivity : ComponentActivity() {
             try {
                 val bmp = frameAt(r, index, null) ?: return@execute
                 val g = FrameConvert.fromBitmap(bmp, 0.0)
+                shownGray = g
                 runOnUiThread {
                     image.setImageBitmap(bmp)
                     overlay.frameWidth = g.width; overlay.frameHeight = g.height
@@ -185,7 +190,7 @@ class GalleryActivity : ComponentActivity() {
                         val f = FrameConvert.fromBitmap(bmp, videoT * timeScale)
                         bmp.recycle()
                         w = f.width; h = f.height
-                        val s = session ?: ShotSession(b.first, b.second, f.width).also { session = it }
+                        val s = session ?: ShotSession(f, b.first, b.second).also { session = it }
                         s.feed(f)
                         if (s.state == ShotSession.State.FINISHED || s.state == ShotSession.State.FAILED) break@loop
                     }
