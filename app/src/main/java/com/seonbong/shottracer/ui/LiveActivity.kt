@@ -60,8 +60,10 @@ class LiveActivity : ComponentActivity() {
             text = "다시 설정"
             setOnClickListener {
                 analysisExecutor.execute { session = null }
-                overlay.ball = null; overlay.tracked = emptyList(); overlay.curve = emptyList()
-                overlay.message = "공을 탭하세요"; overlay.invalidate()
+                // Button.apply 안에서는 'overlay'가 View 자체 속성으로 해석되므로 명시
+                val ov = this@LiveActivity.overlay
+                ov.ball = null; ov.tracked = emptyList(); ov.curve = emptyList()
+                ov.message = "공을 탭하세요"; ov.invalidate()
             }
         }
         root.addView(previewView, FrameLayout.LayoutParams(-1, -1))
